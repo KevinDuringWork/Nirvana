@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.IO;
 using CommandLine.Builders;
 using CommandLine.NDesk.Options;
@@ -47,7 +49,14 @@ namespace SAUtils.DumpNSA
             using (var _nsaStreamIndex = FileUtilities.GetCreateStream(Path.Combine(_nsa, SaCommon.IndexSuffix)))
             using (var _nsareader = new NsaReader(_nsaStream, _nsaStreamIndex, 1024))
             {
-                System.Console.WriteLine("Hello World!");
+                // System.Console.WriteLine("Hello World!");
+                var annotations = new List<(string refAllele, string altAllele, string annotation)>();
+
+                // chr1 ~ 285_000_000
+                _nsareader.GetAnnotation(1000, annotations);
+
+                System.Console.WriteLine(annotations);
+
             }
 
             return ExitCodes.Success;
