@@ -110,17 +110,18 @@ namespace SAUtils.DumpNSA
                 foreach (Chromosome chrom in chromosomes) {
                     System.Console.WriteLine("{0}:{1}", chrom.UcscName, chrom.Length);
                 
-                    for (int i = 0; i<= chrom.Length / buf_size; i++) {
-                        var range = Enumerable.Range(i*buf_size, (i+1)*buf_size).ToList();
+                    // + 1 to address remainder
+                    for (int i = 0; i < (chrom.Length / buf_size) + 1; i++) {
                         
-                        // if (i < 10) {
-                        //     System.Console.WriteLine("{0}-{1}", range.First(), range.Last());
-                        // }
-
-                        // perform preload 
+                        var range = Enumerable.Range(
+                            i*buf_size + 1, 
+                            Math.Max((i+1)*buf_size + 1, chrom.Length + 1)
+                        ).ToList();
+                        
+                        // perform preload of chromosome + buffered range 
                         _nsareader.PreLoad(chrom, range);
 
-                        // dump loaded into buffer 
+                        // dump each preloaded into typed list of tuples 
                         for (int p = i*buf_size; p < (i+i)*buf_size; p++) {
                             var annotations = new List<(string refAllele, string altAllele, string annotation)>();
                             _nsareader.GetAnnotation(p, annotations);
