@@ -12,6 +12,7 @@ using VariantAnnotation.NSA;
 using VariantAnnotation.Providers;
 using VariantAnnotation.SA;
 using Genome;
+using Compression.Algorithms;
 
 namespace SAUtils.DumpNSA
 {
@@ -102,34 +103,54 @@ namespace SAUtils.DumpNSA
                     Chr20, Chr21, Chr22, ChrX, ChrY, ChrM
                 };
 
-                // 1) NSAReader :: Preload (chrom, ...list of positions... )
-                // 2) create a buffer and pass in a buffer
-                // 3) dump buffer 
-                var buf_size = 64 * 1024;
 
                 foreach (Chromosome chrom in chromosomes) {
-                    System.Console.WriteLine("{0}:{1}", chrom.UcscName, chrom.Length);
-                
-                    // + 1 to address remainder
-                    for (int i = 0; i < (chrom.Length / buf_size) + 1; i++) {
+                    var dataBlocks = _nsareader.GetCompressedBlocks(chrom.Index);
+                    foreach (var dataBlock in dataBlocks) {
+                        System.Console.WriteLine("{0}:{1}", chrom.UcscName, chrom.Length);
                         
-                        var range = Enumerable.Range(
-                            i*buf_size + 1, 
-                            Math.Max((i+1)*buf_size + 1, chrom.Length + 1)
-                        ).ToList();
+                        // Setup Compression Algo 
+                        var compressionAlgo = new Zstandard();
+                        int compressedBlockSize = compressionAlgo.GetCompressedBufferBounds(dataBlock.Size());
+                        var compressedBlock     = new byte[compressedBlockSize];
+                        var uncompressedBlock   = new byte[dataBlock.Size()];
                         
-                        // perform preload of chromosome + buffered range 
-                        _nsareader.PreLoad(chrom, range);
+                        // Write to Buffer 
+                        var compressedStream    = new MemoryStream(compressedBlock);
+                        var writer = new ExtendedBinaryWriter(compressedStream);
+                        dataBlock.WriteCompressedBytes(writer);
 
-                        // dump each preloaded into typed list of tuples 
-                        for (int p = i*buf_size; p < (i+i)*buf_size; p++) {
-                            var annotations = new List<(string refAllele, string altAllele, string annotation)>();
-                            _nsareader.GetAnnotation(p, annotations);
-                            annotations.ForEach(a => Console.WriteLine(a));
+                        // Read Header Values 
+                        compressedStream.Position = 0;
+                        var reader = new ExtendedBinaryReader(compressedStream);
+
+                        var _compressedLength = reader.ReadOptInt32();
+                        var _firstPosition    = reader.ReadOptInt32();
+                        var _count            = reader.ReadOptInt32();
+                        var _block            = reader.ReadBytes(_compressedLength);
+
+                        // Decompress using ZStandard
+                        compressionAlgo.Decompress(
+                            _block, _compressedLength, 
+                            uncompressedBlock, uncompressedBlock.Length
+                        );
+                        System.Console.WriteLine("Compression Header: {0}, {1}, {2}", _compressedLength, _firstPosition, _count);
+
+                        // Read ffrom decompressed Block 
+                        var uncompressedStream = new MemoryStream(uncompressedBlock);
+                        var uncompressedReader = new ExtendedBinaryReader(uncompressedStream);
+
+                        var count  = uncompressedReader.ReadOptInt32();
+                        System.Console.WriteLine("Uncompressed Header: {0}", count);
+
+                        for (var i=0; i<count; i++) {
+                            string refAllele  = uncompressedReader.ReadString();
+                            string altAllele  = uncompressedReader.ReadString();
+                            string annotation = uncompressedReader.ReadString();
+                        
+                            System.Console.WriteLine("{0}", refAllele);
                         }
-
                     }
-
                 }
             }
 

@@ -18,13 +18,14 @@ namespace VariantAnnotation.NSA
         private int _firstPosition;
         private int _lastPosition;
         private int _count;
-        
+        private int _size; 
         private readonly ExtendedBinaryReader _blockReader;
         private readonly MemoryStream         _blockStream;
         
         
         public NsaBlock(ICompressionAlgorithm compressionAlgorithm, int size)
         {
+            _size = size;
             _compressionAlgorithm = compressionAlgorithm;
             _uncompressedBlock    = new byte[size];
             _blockStream          = new MemoryStream(_uncompressedBlock);
@@ -33,20 +34,21 @@ namespace VariantAnnotation.NSA
             
             int compressedBlockSize = compressionAlgorithm.GetCompressedBufferBounds(size);
             _compressedBlock = new byte[compressedBlockSize];
-            
         }
 
-        public void Read(ExtendedBinaryReader reader)
+        public int Size() {
+            return _size; 
+        }
+
+                public void Read(ExtendedBinaryReader reader)
         {
             _compressedLength = reader.ReadOptInt32();
             _firstPosition    = reader.ReadOptInt32();
             //_lastPosition   = reader.ReadOptInt32();
             _count            = reader.ReadOptInt32();
             reader.Read(_compressedBlock, 0, _compressedLength);
-
             _uncompressedLength = _compressionAlgorithm.Decompress(_compressedBlock, _compressedLength,
                 _uncompressedBlock, _uncompressedBlock.Length);
-            
             _blockStream.Position = 0;
         }
 
