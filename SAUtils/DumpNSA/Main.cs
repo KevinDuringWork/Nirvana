@@ -108,7 +108,7 @@ namespace SAUtils.DumpNSA
                 var buf_size = 64 * 1024;
 
                 foreach (Chromosome chrom in chromosomes) {
-                    System.Console.WriteLine("{0}:{1}"chrom.UcscName, chrom.Length);
+                    System.Console.WriteLine("{0}:{1}", chrom.UcscName, chrom.Length);
                 
                     for (int i = 0; i<= chrom.Length / buf_size; i++) {
                         var range = Enumerable.Range(i*buf_size, (i+1)*buf_size).ToList();
@@ -124,7 +124,7 @@ namespace SAUtils.DumpNSA
                         for (int p = i*buf_size; p < (i+i)*buf_size; p++) {
                             var annotations = new List<(string refAllele, string altAllele, string annotation)>();
                             _nsareader.GetAnnotation(p, annotations);
-                            System.Console.WriteLine(
+                            annotations.ForEach(a => Console.WriteLine(a));
                         }
 
                     }
